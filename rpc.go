@@ -65,13 +65,13 @@ func main() {
 
     for {
         select {
-            case <-sig:
+            case <- sig:
                 fmt.Println("\nClearing...")
                 client.Logout()
 
                 return
 
-            case <-tick.C:
+            case <- tick.C:
                 _ = client.SetActivity(activity)
 
         }
