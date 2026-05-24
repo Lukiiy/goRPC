@@ -1,0 +1,80 @@
+name: Build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build for ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-amd64
+            runner: windows-latest
+            goos: windows
+            goarch: amd64
+            ext: .exe
+
+          - name: windows-arm64
+            runner: windows-11-arm
+            goos: windows
+            goarch: arm64
+            ext: -arm.exe
+
+          - name: linux-amd64
+            runner: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            ext: -linux
+
+          - name: linux-arm64
+            runner: ubuntu-24.04-arm
+            goos: linux
+            goarch: arm64
+            ext: -linux-arm
+
+          - name: macos-amd64
+            runner: macos-15-intel
+            goos: darwin
+            goarch: amd64
+            ext: -macOS-intel
+
+          - name: macos-arm64
+            runner: macos-15
+            goos: darwin
+            goarch: arm64
+            ext: -macOS-arm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6.4.0
+        with:
+          go-version: stable
+          cache: true
+
+      - name: Get modules
+        shell: bash
+        run: go mod download
+
+      - name: Compile
+        shell: bash
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          OUTPUT: rpc${{ matrix.ext }}
+        run: |
+          set -euo pipefail
+          go build -trimpath -o "$OUTPUT" ./rpc.go
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: rpc-${{ matrix.name }}
+          path: rpc${{ matrix.ext }}
+          if-no-files-found: error
