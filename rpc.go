@@ -12,23 +12,7 @@ import (
 )
 
 func main() {
-    id := flag.String("client-id", "", "Client ID (required)")
-    once := flag.Bool("once", false, "Execute and exit")
-    retry := flag.Int("retry", 5, "Seconds to wait before reconnect attempts")
-    activity := client.Activity{}
-
-    flag.StringVar(&activity.Details, "details", "", "Main details text")
-    flag.StringVar(&activity.State, "state", "", "Secondary text")
-    flag.StringVar(&activity.LargeImage, "large-image", "", "Large image asset key")
-    flag.StringVar(&activity.LargeText, "large-text", "", "Large image hover text")
-    flag.StringVar(&activity.SmallImage, "small-image", "", "Small image asset key")
-    flag.StringVar(&activity.SmallText, "small-text", "", "Small image hover text")
-    flag.Parse()
-
-    if err := update(*id, activity, *once, *retry); err != nil {
-        fmt.Fprintln(os.Stderr, "Error:", err)
-        os.Exit(1)
-    }
+	mainGui()
 }
 
 func update(clientId string, activity client.Activity, once bool, retry int) error {
