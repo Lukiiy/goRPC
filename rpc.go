@@ -25,55 +25,61 @@ func main() {
     flag.StringVar(&activity.SmallText, "small-text", "", "Small image hover text")
     flag.Parse()
 
-    if *id == "" {
-        fmt.Fprintln(os.Stderr, "Error: Client ID is required")
+    if err := update(*id, activity, *once, *retry); err != nil {
+        fmt.Fprintln(os.Stderr, "Error:", err)
+        os.Exit(1)
+    }
+}
+
+func update(clientId string, activity client.Activity, once bool, retry int) error {
+	if clientId == "" {
+        fmt.Fprintln(os.Stderr, "Client ID is required")
         flag.Usage()
 
         os.Exit(1)
     }
 
-    for {
-        err := client.Login(*id)
-        if err == nil {
-            break
-        }
+	for {
+		err := client.Login(clientId)
+		if err == nil {
+			break
+		}
 
-        fmt.Fprintf(os.Stderr, "Connection error: %v. Retrying in %ds...\n", err, *retry)
-        time.Sleep(time.Duration(*retry) * time.Second)
-    }
+		fmt.Fprintf(os.Stderr, "Connection error: %v. Retrying in %ds...\n", err, retry)
+		time.Sleep(time.Duration(retry) * time.Second)
+	}
 
-    if err := client.SetActivity(activity); err != nil {
-        fmt.Fprintln(os.Stderr, "Error while updating presence:", err)
-        client.Logout()
+	if err := client.SetActivity(activity); err != nil {
+		client.Logout()
 
-        os.Exit(1)
-    }
+		return fmt.Errorf("Couldn't update presence due to %w", err)
+	}
 
-    fmt.Println("Updated!")
+	fmt.Println("Updated!")
 
-    if *once {
-        client.Logout()
-        return
-    }
+	if once {
+		client.Logout()
+		return nil
+	}
 
-    sig := make(chan os.Signal, 1)
+	// run & signal handling
+	sig := make(chan os.Signal, 1)
 
     signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 
     tick := time.NewTicker(15 * time.Second)
     defer tick.Stop()
 
-    for {
-        select {
-            case <- sig:
-                fmt.Println("\nClearing...")
-                client.Logout()
+	for {
+		select {
+			case <- sig:
+				fmt.Println("\nClearing...")
 
-                return
+				client.Logout()
+				return nil
 
-            case <- tick.C:
-                _ = client.SetActivity(activity)
-
-        }
-    }
+			case <- tick.C: // Periodically refresh the activity state
+				_ = client.SetActivity(activity)
+		}
+	}
 }
